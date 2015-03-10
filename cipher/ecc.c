@@ -538,12 +538,12 @@ ecc_generate (const gcry_sexp_t genparms, gcry_sexp_t *r_skey)
                      " (public-key"
                      "  (ecc%S%S(q%m)))"
                      " (private-key"
-                     "  (ecc%S%S(q%m)(d%m)))"
+                     "  (ecc%S%S(q%m)(d%m)(a%m)))"
                      " )",
                      curve_info, curve_flags,
                      public,
                      curve_info, curve_flags,
-                     public, secret);
+                     public, secret, sk.ed25519_secret_scaler);
   if (rc)
     goto leave;
 
@@ -1167,18 +1167,24 @@ ecc_encrypt_raw (gcry_sexp_t *r_ciph, gcry_sexp_t s_data, gcry_sexp_t keyparms)
       goto leave;
     }
 
+  /*vmon: moved first so we can use it for ed25519 as well */
+  /* Compute the encrypted value.  */
+  ec = _gcry_mpi_ec_p_internal_new (pk.E.model, pk.E.dialect, 0,
+                                    pk.E.p, pk.E.a, pk.E.b);
+
   /* Convert the public key.  */
   if (mpi_q)
     {
       point_init (&pk.Q);
-      rc = _gcry_ecc_os2ec (&pk.Q, mpi_q);
+      if (pk.E.dialect == ECC_DIALECT_ED25519)
+          rc = _gcry_ecc_eddsa_decodepoint (mpi_q, ec, &pk.Q, NULL, NULL);
+      else
+          rc = _gcry_ecc_os2ec (&pk.Q, mpi_q);
+      
       if (rc)
         goto leave;
     }
 
-  /* Compute the encrypted value.  */
-  ec = _gcry_mpi_ec_p_internal_new (pk.E.model, pk.E.dialect, 0,
-                                    pk.E.p, pk.E.a, pk.E.b);
 
   /* The following is false: assert( mpi_cmp_ui( R.x, 1 )==0 );, so */
   {

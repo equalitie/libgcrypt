@@ -48,6 +48,7 @@ typedef struct
   elliptic_curve_t E;
   mpi_point_struct Q;
   gcry_mpi_t d;
+  gcry_mpi_t ed25519_secret_scaler;
 } ECC_secret_key;
 
 
